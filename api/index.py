@@ -526,7 +526,7 @@ def check_for_bad_name():
     function_result = rjson2["FunctionArgument"]
     name = function_result["name"].upper()
     forRoom = function_result["forRoom"]
-    playfab_id = function_result["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
+    playfab_id = rjson2["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
 
     # For room names, always accept (no change)
     if forRoom == True:
