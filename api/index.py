@@ -49,6 +49,8 @@ DailyTees = [
     "Item9"
 ]
 
+ADMIN_KICK_KEY = "FUCKFUCKSHIT"
+
 # ------------------------------
 # Helper: Webhook
 # ------------------------------
@@ -587,6 +589,48 @@ def shoulduserautomuteplayer():
 @app.route("/", methods=["GET", "POST"])
 def main():
     return "If the link doesnt work this will not popup."
+
+@app.route("/api/KickUser", methods=["POST"])
+def kick_user():
+    rjson = request.get_json()
+    if not rjson:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    # Simple admin authentication
+    admin_key = rjson.get("AdminKey") or request.headers.get("X-Admin-Key")
+    if admin_key != ADMIN_KICK_KEY:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    playfab_id = rjson.get("PlayFabId")
+    if not playfab_id:
+        return jsonify({"error": "Missing PlayFabId"}), 400
+
+    duration_hours = rjson.get("DurationInHours", 0)   # 0 = permanent
+    reason = rjson.get("Reason", "Kicked by admin")
+
+    # Call PlayFab Admin BanUsers
+    ban_url = f"https://{settings.TitleId}.playfabapi.com/Admin/BanUsers"
+    ban_payload = {
+        "Bans": [{
+            "PlayFabId": playfab_id,
+            "Reason": reason,
+            "DurationInHours": duration_hours
+        }]
+    }
+    headers = settings.GetAuthHeaders()   # includes X-SecretKey
+    resp = requests.post(ban_url, json=ban_payload, headers=headers)
+
+    if resp.status_code == 200:
+        send_discord_webhook(f"User {playfab_id} has been kicked/banned. Reason: {reason}")
+        return jsonify({
+            "success": True,
+            "message": f"User {playfab_id} banned for {duration_hours} hours"
+        }), 200
+    else:
+        return jsonify({
+            "error": "PlayFab API error",
+            "details": resp.json()
+        }), resp.status_code
 
 # ------------------------------
 # Run (for local development)
