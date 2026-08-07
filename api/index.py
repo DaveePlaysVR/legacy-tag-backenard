@@ -524,7 +524,7 @@ def check_for_bad_name():
     rjson2 = request.get_json()
     rjson = rjson2.get("FunctionResult")
     function_result = rjson2["FunctionArgument"]
-    name = rjson.get("name").upper()
+    name = function_result["name"].upper()
     forRoom = function_result["forRoom"]
     playfab_id = function_result["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
 
