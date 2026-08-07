@@ -36,6 +36,17 @@ currentDailyItems = []
 lastUpdateDate = None
 webhookSentToday = False
 
+BAD_WORDS = {
+    "KKK", "PENIS", "NIGG", "NEG", "NIGA", "MONKEYSLAVE", "SLAVE", "FAG",
+    "NAGGI", "TRANNY", "QUEER", "KYS", "DICK", "PUSSY", "VAGINA", "BIGBLACKCOCK",
+    "DILDO", "HITLER", "KKX", "XKK", "NIGE", "NIG", "NI6", "PORN",
+    "JEW", "JAXX", "TTTPIG", "SEX", "COCK", "CUM", "FUCK", "ELLIOT",
+    "JMAN", "K9", "NIGGA", "NICKER", "NICKA", "REEL", "NII", "@here",
+    "!", " ", "PPPTIG", "CLEANINGBOT", "JANITOR", "H4PKY", "MOSA",
+    "NIGGER", "IHATENIGGERS", "@everyone", "BEANER", "B3ANER", "BEAN3R",
+    "B3AN3R", "TTT"
+}
+
 # List of item IDs – replace with real ones
 DailyTees = [
     "LBAAE.",
@@ -48,8 +59,6 @@ DailyTees = [
     "Item8",
     "Item9"
 ]
-
-ADMIN_KICK_KEY = "FUCKFUCKSHIT"
 
 # ------------------------------
 # Helper: Webhook
@@ -316,7 +325,7 @@ def playfabauthentication():
                 ban_expiration = ban_expiration_list[0] if ban_expiration_list else "Indefinite"
 
                 sendwebhook(
-                    "PlayFab Authentication - User Banned 😻",
+                    "PlayFab Authentication - User Banned",
                     f"User {oculusId} attempted to authenticate but is banned",
                     [
                         {"name": "OculusId", "value": oculusId, "inline": True},
@@ -340,7 +349,7 @@ def playfabauthentication():
             error_info = login_request.json()
             error_message = error_info.get('errorMessage', 'An error occurred.')
             sendwebhook(
-                "PlayFab Authentication Failed 😻",
+                "PlayFab Authentication Failed",
                 "Authentication error occurred",
                 [
                     {"name": "OculusId", "value": oculusId, "inline": True},
@@ -511,21 +520,34 @@ def cacheplatfabid():
     return jsonify({"Message": "Success"}), 200
 
 @app.route("/api/CheckForBadName", methods=["POST"])
-def checkforbadname():
-    rjson = request.get_json()
-    function_result = rjson["FunctionArgument"]
-    playfab_id = rjson["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
-    name = function_result["name"].upper()
-    forRoom = function_result["forRoom"]
+def check_for_bad_name():
+    rjson2 = request.get_json()
+    rjson = rjson2.get("FunctionResult")
+    name = rjson.get("name").upper()
+    forRoom = rjson.get("forRoom")
+    playfab_id = rjson2["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
+
+    # For room names, always accept (no change)
     if forRoom == True:
         return jsonify({"result": 0})
+
+    # Decide new display name and result code
+    if name in BAD_WORDS:
+        new_name = "BADGORILLA"
+        result_code = 2
+    else:
+        new_name = name
+        result_code = 0
+
+    # Single PlayFab API call – update the display name
     requests.post(
         f"https://{settings.TitleId}.playfabapi.com/Admin/UpdateUserTitleDisplayName",
-        json={"DisplayName": name, "PlayFabId": playfab_id},
+        json={"DisplayName": new_name, "PlayFabId": playfab_id},
         headers=settings.GetAuthHeaders()
     )
-    return jsonify({"result": 0})
 
+    return jsonify({"result": result_code})
+    
 @app.route("/api/GetAcceptedAgreements", methods=["POST"])
 def GetAcceptedAgreements():
     return jsonify({"PrivacyPolicy": "1.1.28", "TOS": "11.05.22.2"}), 200
@@ -589,48 +611,6 @@ def shoulduserautomuteplayer():
 @app.route("/", methods=["GET", "POST"])
 def main():
     return "If the link doesnt work this will not popup."
-
-@app.route("/api/KickUser", methods=["POST"])
-def kick_user():
-    rjson = request.get_json()
-    if not rjson:
-        return jsonify({"error": "Invalid JSON"}), 400
-
-    # Simple admin authentication
-    admin_key = rjson.get("AdminKey") or request.headers.get("X-Admin-Key")
-    if admin_key != ADMIN_KICK_KEY:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    playfab_id = rjson.get("PlayFabId")
-    if not playfab_id:
-        return jsonify({"error": "Missing PlayFabId"}), 400
-
-    duration_hours = rjson.get("DurationInHours", 0)   # 0 = permanent
-    reason = rjson.get("Reason", "Kicked by admin")
-
-    # Call PlayFab Admin BanUsers
-    ban_url = f"https://{settings.TitleId}.playfabapi.com/Admin/BanUsers"
-    ban_payload = {
-        "Bans": [{
-            "PlayFabId": playfab_id,
-            "Reason": reason,
-            "DurationInHours": duration_hours
-        }]
-    }
-    headers = settings.GetAuthHeaders()   # includes X-SecretKey
-    resp = requests.post(ban_url, json=ban_payload, headers=headers)
-
-    if resp.status_code == 200:
-        send_discord_webhook(f"User {playfab_id} has been kicked/banned. Reason: {reason}")
-        return jsonify({
-            "success": True,
-            "message": f"User {playfab_id} banned for {duration_hours} hours"
-        }), 200
-    else:
-        return jsonify({
-            "error": "PlayFab API error",
-            "details": resp.json()
-        }), resp.status_code
 
 # ------------------------------
 # Run (for local development)
