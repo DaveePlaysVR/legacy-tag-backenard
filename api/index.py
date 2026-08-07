@@ -337,7 +337,7 @@ def checkforbadname():
         return jsonify({"result": 0})
 
     link_response = requests.post(
-        url=f"https://{settings.titleid}.playfabapi.com/Admin/UpdateUserTitleDisplayName",
+        url=f"https://{settings.TitleId}.playfabapi.com/Admin/UpdateUserTitleDisplayName",
         json={
             "DisplayName": name,
             "PlayFabId": playfab_id,
