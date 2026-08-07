@@ -523,9 +523,10 @@ def cacheplatfabid():
 def check_for_bad_name():
     rjson2 = request.get_json()
     rjson = rjson2.get("FunctionResult")
+    function_result = rjson2["FunctionArgument"]
     name = rjson.get("name").upper()
-    forRoom = rjson.get("forRoom")
-    playfab_id = rjson2["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
+    forRoom = function_result["forRoom"]
+    playfab_id = function_result["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
 
     # For room names, always accept (no change)
     if forRoom == True:
