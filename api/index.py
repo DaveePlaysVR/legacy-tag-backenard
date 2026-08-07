@@ -250,19 +250,6 @@ def playfabauthentication():
         send_discord_webhook("no auth with playfab!?!" + f" OculusId: {oculusId}, Nonce: {nonce}")
         return jsonify({"Message":"No authentication with Oculus","Error":"BadRequest-NoOculusAuth"})
 
-    # --- Validate nonce with Oculus ---
-    if not validateNonce(nonce, oculusId):
-        sendwebhook(
-            "PlayFab Authentication Failed - Invalid Nonce 😻",
-            f"Nonce validation failed for Oculus user {oculusId}",
-            [{"name": "OculusId", "value": oculusId, "inline": True}],
-            16711680
-        )
-        return jsonify({
-            "error": "Invalid nonce - authentication failed",
-            "message": "The provided nonce could not be validated with Oculus"
-        }), 403
-
     # --- Login with PlayFab ---
     url = f"https://{settings.TitleId}.playfabapi.com/Server/LoginWithServerCustomId"
     login_request = requests.post(
