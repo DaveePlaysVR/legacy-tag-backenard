@@ -316,15 +316,19 @@ def cacheplatfabid():
 
     return jsonify({"Message":"Success"}), 200
 
-@app.route('/api/TitleData', methods=['POST'])
+@app.route("/v1/title-data/client", methods=["POST", "GET"])
+@app.route('/api/TD', methods=['POST', 'GET'])
+@app.route('/api/TitleData', methods=['POST', 'GET'])
 def titled_data():
-    return jsonify({"MOTD": "<color=#ff8d0a>   [ > WELCOME TO PROJECT LUNAR! < ]  </color>\n<color=#ff00ee>   BOOST https://discord.gg/gaj8PHafq3 FOR EVERY COSMETIC!</color>\n<color=#783be3>   CREDITS: Z4EU, LUNRRR</color>\n<color=#2ef1ff>   THIS GAME TAKES YOU INTO OLDER AND NEWER GTAG UPDATES!</color><color=#bb1b1b>\n   YOU DON'T NEED TO CHANGE YOU'RE NAME!!</color>"})
-
-    if req.status_code == 200:
-        return jsonify(req.json().get("data").get("Data"))
+    response = requests.post(
+        url=f"https://{settings.TitleId}.playfabapi.com/Server/GetTitleData",
+        headers=settings.GetAuthHeaders()
+    )
+    if response.status_code == 200:
+        return jsonify(response.json().get("data", {}).get("Data", {}))
     else:
-        return jsonify({})
-
+        return jsonify({}), response.status_code
+        
 @app.route("/api/CheckForBadName", methods=["POST", "GET"])
 def checkforbadname():
     rjson = request.get_json() 
