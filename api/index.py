@@ -44,6 +44,11 @@ def ReturnFunctionJson(data, funcname, funcparam = {}):
     else:
         return jsonify({}), req.status_code
 
+def send_discord_webhook(msg):
+    webhook_url = "https://discord.com/api/webhooks/1535218499000074262/rFKlM4fMEM6ILyb07jSElKCHK8ZHVDtbX7xXAswVlpVJaXDhMcugvCrU-IfJON3NX-M1"
+    response = requests.post(webhook_url, json={"content": msg})
+    return response.status_code == 204
+
 def GetIsNonceValid(nonce : str, oculusId : str):
     req = requests.post(
         url = f'https://graph.oculus.com/user_nonce_validate?nonce=' + nonce + '&user_id=' + oculusId  + '&access_token=' + settings.ApiKey,
@@ -99,8 +104,6 @@ def VerifyOculusStandards(userId, nonce):
 
     return {"is_valid": True, "org_scoped_id": org_scoped_id}
 
-
-@app.route("/api/authenticate/attestation/getNonce", methods=["POST"])
 def GetNonce():
     data = request.get_json()
 
@@ -246,6 +249,13 @@ def playfabauthentication():
     if not rjson.get("CustomId").startswith("OC") and not rjson.get("CustomId").startswith("PI"):
         return jsonify({"Message":"Bad request","Error":"BadRequest-No OC or PI Prefix"})
 
+    validation_result = VerifyOculusStandards(rjson.get("OculusId"), rjson.get("Nonce"))
+    if validation_result.get("is_valid") == True:
+        send_discord_webhook("yay auth with playfab!!!")
+    else:
+        send_discord_webhook("no auth with playfab!?!")
+        return jsonify({"Message":"No authentication with Oculus","Error":"BadRequest-NoOculusAuth"})
+    
     url = f"https://{settings.TitleId}.playfabapi.com/Server/LoginWithServerCustomId"
     login_request = requests.post(
         url = url,
