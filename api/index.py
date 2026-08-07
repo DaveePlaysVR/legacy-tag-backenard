@@ -528,10 +528,10 @@ def check_for_bad_name():
     forRoom = function_result["forRoom"]
     playfab_id = rjson2["CallerEntityProfile"]["Lineage"]["MasterPlayerAccountId"]
 
-    print(f"forRoom - {forRoom}")
+    print(f"Stuff - {rjson2}")
 
     # For room names, always accept (no change)
-    if forRoom == True:
+    if forRoom:
         return jsonify({"result": 0})
 
     # Decide new display name and result code
