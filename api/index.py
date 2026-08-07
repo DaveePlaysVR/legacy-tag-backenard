@@ -342,7 +342,7 @@ def checkforbadname():
             "DisplayName": name,
             "PlayFabId": playfab_id,
         },
-        headers=settings.get_auth_headers(),
+        headers=settings.GetAuthHeaders(),
     ).json()
     return jsonify({"result": 0})
 
