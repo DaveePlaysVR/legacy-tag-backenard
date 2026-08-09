@@ -174,12 +174,14 @@ def skibidi():
 @app.route("/v1/title-data/client", methods=["POST"])
 @app.route('/api/TD', methods=['POST'])
 def titled_data():
-    return jsonify({"MOTD": "<color=cyan>WELCOME TO PENZ TAG</color>\n\n<color=red>UPDATE: CHRISTMAS 2025 WITH FIXED PREDICTIONS, HAVE AN UPDATE THAT YOU WANT? REQUEST IT IN THE DISCORD!</color>\n\n<color=blue>DISCORD: https://discord.gg/UBY56Waz5j</color>\n\n<color=orange>CREDITS: ROXXY,DAVEPLAYS,FATE AND EVERYONE ELSE IN THE AML/APKLAND SERVER (OWNER OF THE GAME IS PENZ)</color>"})
-
-    if req.status_code == 200:
-        return jsonify(req.json().get("data").get("Data"))
+    response = requests.post(
+        url=f"https://{settings.TitleId}.playfabapi.com/Server/GetTitleData",
+        headers=settings.get_auth_headers()
+    )
+    if response.status_code == 200:
+        return jsonify(response.json().get("data", {}).get("Data", {}))
     else:
-        return jsonify({})
+        return jsonify({}), response.status_code
 
 @app.route("/api/ConsumeOculusIAP", methods=["POST"])
 def consume_oculus_iap():
