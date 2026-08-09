@@ -298,6 +298,190 @@ def submit_accepted_agreements():
 def return_my_oculus_hash_v2():
     return return_function_json(request.get_json(), "ReturnMyOculusHash")
 
+@app.route('/api/GetTier', methods=['POST'])
+def get_tier():
+    try:
+        body = request.get_json() or {}
+        playfabids = body.get('playfabIds', [])
+        if not playfabids:
+            return jsonify([]), 200
+
+        results = []
+        for pid in playfabids:
+            # Get or initialize ranked data for this player
+            data = get_player_data(pid, ["RankedData"])
+            ranked = data.get("RankedData")
+            if not ranked:
+                ranked = {
+                    "PC": {"elo": 1000.0, "majorTier": 0, "minorTier": 0, "rankProgress": 0.0},
+                    "Quest": {"elo": 1000.0, "majorTier": 0, "minorTier": 0, "rankProgress": 0.0}
+                }
+            platformdata = []
+            for plat in ["PC", "Quest"]:
+                entry = ranked.get(plat, {})
+                platformdata.append({
+                    "platform": plat,
+                    "elo": entry.get("elo", 1000.0),
+                    "majorTier": entry.get("majorTier", 0),
+                    "minorTier": entry.get("minorTier", 0),
+                    "rankProgress": entry.get("rankProgress", 0.0),
+                })
+            results.append({
+                "playfabID": pid,
+                "platformData": platformdata,
+            })
+        return jsonify(results), 200
+    except Exception as e:
+        return jsonify([]), 500
+
+@app.route('/api/CreateMatchId', methods=['POST'])
+def create_match_id():
+    try:
+        body = request.get_json() or {}
+        mothershipid = body.get('mothershipId')
+        platform = body.get('platform', "PC")
+        matchid = str(uuid.uuid4())
+
+        matches = get_title_data(["ActiveMatches"]).get("ActiveMatches") or []
+        now = datetime.utcnow()
+        
+        active = [m for m in matches if (now - datetime.fromisoformat(m['created'])) < timedelta(hours=1)]
+        active.append({
+            "matchid": matchid,
+            "createdby": mothershipid,
+            "platform": platform,
+            "isactive": True,
+            "created": now.isoformat(),
+            "lastping": now.isoformat()
+        })
+        set_title_data({"ActiveMatches": active})
+        return matchid, 200
+    except Exception as e:
+        return "", 500
+
+@app.route('/api/ValidateMatchJoin', methods=['POST'])
+def validate_match_join():
+    try:
+        body = request.get_json() or {}
+        matchid = body.get('matchId')
+        mothershipid = body.get('mothershipId')
+        if not matchid:
+            return jsonify({"validJoin": False}), 200
+
+        matches = get_title_data(["ActiveMatches"]).get("ActiveMatches") or []
+        match = next((m for m in matches if m['matchid'] == matchid and m.get('isactive', True)), None)
+        if match:
+            return jsonify({"validJoin": True}), 200
+        return jsonify({"validJoin": False}), 200
+    except Exception as e:
+        return jsonify({"validJoin": False}), 500
+
+@app.route('/api/SubmitMatchScores', methods=['POST'])
+def submit_match_scores():
+    try:
+        body = request.get_json() or {}
+        matchid = body.get('matchId')
+        scores = body.get('playerScores', [])
+        if not matchid or not scores or len(scores) < 2:
+            return "OK", 200
+
+        sorted_scores = sorted(scores, key=lambda x: x.get('gameScore', 0), reverse=True)
+        playercount = len(scores)
+
+        for i, sc in enumerate(sorted_scores):
+            pid = sc.get('playfabId')
+            if not pid:
+                continue
+            data = get_player_data(pid, ["RankedData"])
+            ranked = data.get("RankedData") or {}
+            # Determine platform (assume PC)
+            plat = "PC"
+            entry = ranked.get(plat, {})
+            elo = entry.get("elo", 1000.0)
+            placement = i / (playercount - 1)
+            elochange = (1 - placement) * 20 - 10
+            elo = max(0, elo + elochange)
+
+            # Recalculate tier
+            if elo >= 2000:
+                major, minor, progress = 5, 0, 1.0
+            elif elo >= 1600:
+                major = 4
+                minor = int((elo - 1600) / 133)
+                progress = ((elo - 1600) % 133) / 133
+            elif elo >= 1200:
+                major = 3
+                minor = int((elo - 1200) / 133)
+                progress = ((elo - 1200) % 133) / 133
+            elif elo >= 800:
+                major = 2
+                minor = int((elo - 800) / 133)
+                progress = ((elo - 800) % 133) / 133
+            elif elo >= 400:
+                major = 1
+                minor = int((elo - 400) / 133)
+                progress = ((elo - 400) % 133) / 133
+            else:
+                major = 0
+                minor = int(elo / 133)
+                progress = (elo % 133) / 133
+
+            entry["elo"] = elo
+            entry["majorTier"] = major
+            entry["minorTier"] = min(minor, 2)
+            entry["rankProgress"] = progress
+            ranked[plat] = entry
+            set_player_data(pid, {"RankedData": ranked})
+
+        matches = get_title_data(["ActiveMatches"]).get("ActiveMatches") or []
+        for m in matches:
+            if m['matchid'] == matchid:
+                m['isactive'] = False
+        set_title_data({"ActiveMatches": matches})
+        return "OK", 200
+    except Exception as e:
+        return "Error", 500
+
+@app.route('/api/PingRoom', methods=['POST'])
+def ping_room():
+    try:
+        body = request.get_json() or {}
+        matchid = body.get('matchId')
+        if matchid:
+            matches = get_title_data(["ActiveMatches"]).get("ActiveMatches") or []
+            for m in matches:
+                if m['matchid'] == matchid:
+                    m['lastping'] = datetime.utcnow().isoformat()
+            set_title_data({"ActiveMatches": matches})
+        return "OK", 200
+    except Exception as e:
+        return "Error", 500
+
+@app.route('/api/UnlockCompetitiveQueue', methods=['POST'])
+def unlock_competitive_queue():
+    try:
+        body = request.get_json() or {}
+        mothershipid = body.get('mothershipId')
+        platform = body.get('platform', "PC")
+        unlocked = body.get('unlocked', False)
+        if mothershipid:
+            # Store in Player Data
+            data = get_player_data(mothershipid, ["CompetitiveUnlock"])
+            unlocks = data.get("CompetitiveUnlock") or {}
+            unlocks[platform] = unlocked
+            set_player_data(mothershipid, {"CompetitiveUnlock": unlocks})
+        return "OK", 200
+    except Exception as e:
+        return "Error", 500
+
+@app.route('/api/CCU', methods=['POST'])
+def ccu():
+    rjson = request.get_json()
+    print(f"Received rjson request at /api/CCU")
+    print(f"{rjson}")
+    # Return a dummy concurrent user count
+    return jsonify({"count": random.randint(100, 500), "errorMessage": None}), 200
+
 @app.route("/api/ReturnCurrentVersionV2", methods=["POST", "GET"])
 def return_current_version_v2():
     return return_function_json(request.get_json(), "ReturnCurrentVersion")
