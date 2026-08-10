@@ -545,7 +545,7 @@ def ccu():
     print(f"Files: {list(files.keys())}")
     print(f"Raw body: {raw_body}")
     # Return a dummy concurrent user count
-    return jsonify({"count": random.randint(100, 500), "errorMessage": None}), 200
+    return jsonify({"status": 200}), 200
 
 @app.route("/api/ReturnCurrentVersionV2", methods=["POST", "GET"])
 def return_current_version_v2():
