@@ -23,6 +23,7 @@ settings = GameInfo()
 app = Flask(__name__)
 playfab_cache = {}
 mute_cache = {}
+PLAYFAB_API_URL = f"https://{settings.TitleId}.playfabapi.com"
 
 BAD_WORDS = {
     "KKK", "PENIS", "NIGG", "NEG", "NIGA", "MONKEYSLAVE", "SLAVE", "FAG",
@@ -63,6 +64,56 @@ def get_is_nonce_valid(nonce, oculus_id):
         headers={"content-type": "application/json"})
     return response.json().get("is_valid")
 
+# helpers ig
+def playfab_request(endpoint, payload):
+    url = f"{PLAYFAB_API_URL}/Server/{endpoint}"
+    headers = {
+        "Content-Type": "application/json",
+        "X-SecretKey": {settings.SecretKey}
+    }
+    resp = requests.post(url, json=payload, headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_player_data(playfab_id, keys):
+    """Fetch specific keys from Player Internal Data (Server API)."""
+    resp = playfab_request("GetUserInternalData", {
+        "PlayFabId": playfab_id,
+        "Keys": keys
+    })
+    data = resp.get("data", {}).get("Data", {})
+    result = {}
+    for key in keys:
+        val = data.get(key, {}).get("Value")
+        if val:
+            # values are base64 encoded? Actually PlayFab returns them as Base64 strings.
+            # For simplicity we assume we stored JSON strings directly.
+            # If using GetUserInternalData, the Value is a base64 string; we decode.
+            import base64
+            decoded = base64.b64decode(val).decode('utf-8')
+            try:
+                result[key] = json.loads(decoded)
+            except:
+                result[key] = decoded
+        else:
+            result[key] = None
+    return result
+
+def set_player_data(playfab_id, data_dict):
+    """Store multiple keys in Player Internal Data."""
+    # Data must be Base64 encoded strings
+    import base64
+    encoded = {}
+    for k, v in data_dict.items():
+        if isinstance(v, (dict, list)):
+            v = json.dumps(v)
+        elif not isinstance(v, str):
+            v = str(v)
+        encoded[k] = base64.b64encode(v.encode('utf-8')).decode('ascii')
+    playfab_request("UpdateUserInternalData", {
+        "PlayFabId": playfab_id,
+        "Data": encoded
+    })
 
 @app.route("/", methods=["POST", "GET"])
 def main():
