@@ -525,11 +525,12 @@ def unlock_competitive_queue():
     except Exception as e:
         return "Error", 500
 
-@app.route('/api/CCU', methods=['POST'])
+@app.route('/api/CCU', methods=["POST"])
 def ccu():
-    rjson = request.get_json()
-    print(f"Received rjson request at /api/CCU")
-    print(f"{rjson}")
+    rjson = request.get_json(force=True, silent=True)  # Ignores Content-Type header
+    print(f"Received: {rjson}")
+    if rjson is None:
+        print("rjson is null.")
     # Return a dummy concurrent user count
     return jsonify({"count": random.randint(100, 500), "errorMessage": None}), 200
 
