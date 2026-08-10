@@ -527,10 +527,23 @@ def unlock_competitive_queue():
 
 @app.route('/api/CCU', methods=["POST"])
 def ccu():
-    rjson = request.get_json(force=True, silent=True)  # Ignores Content-Type header
+    rjson = request.get_json(force=True, silent=True)
     print(f"Received: {rjson}")
     if rjson is None:
         print("rjson is null.")
+
+    query_params = request.args.to_dict()
+
+    form_data = request.form.to_dict()
+    
+    files = request.files.to_dict()
+
+    raw_body = request.get_data(as_text=True)
+    
+    print(f"Query params: {query_params}")
+    print(f"Form data: {form_data}")
+    print(f"Files: {list(files.keys())}")
+    print(f"Raw body: {raw_body}")
     # Return a dummy concurrent user count
     return jsonify({"count": random.randint(100, 500), "errorMessage": None}), 200
 
