@@ -41,7 +41,7 @@ PLAYFAB_API_URL = f"https://{settings.TitleId}.playfabapi.com"
 # Configure PlayFab SDK using settings
 PlayFabSettings.TitleId = settings.TitleId
 PlayFabSettings.DeveloperSecretKey = settings.SecretKey
-server_api = PlayFabServerAPI()
+server_api = PlayFabServerAPI
 
 # ----------------------------------------------------------------------
 # Existing helper functions
