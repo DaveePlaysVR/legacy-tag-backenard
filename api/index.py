@@ -22,9 +22,9 @@ from playfab import PlayFabServerAPI, PlayFabSettings
 # ----------------------------------------------------------------------
 class GameInfo:
     def __init__(self):
-        self.TitleId: str = "C9605"
-        self.SecretKey: str = "7Z89HZQU4SNHB41JQXDIHKFDEB9J6BHKSDRIEBFI9IYGCHJJYN"
-        self.ApiKey: str = "OC|1324018454123197|e6951e7b676cfd6646fafd973269c029"
+        self.TitleId: str = os.environ.get("T_ID")
+        self.SecretKey: str = os.environ.get("S_KEY")
+        self.ApiKey: str = os.environ.get("API_KEY")
 
     def get_auth_headers(self):
         return {
