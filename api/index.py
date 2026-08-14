@@ -69,6 +69,25 @@ def get_is_nonce_valid(nonce, oculus_id):
     )
     return response.json().get("is_valid")
 
+def get_org_scoper(oculus_id):
+    try:
+        url = f'https://graph.oculus.com/{oculus_id}'
+
+        payload = {
+            'access_token': settings.ApiKey,   # replace with your actual access token variable
+            'fields': 'org_scoped_id',
+            'user_id': oculus_id
+        }
+
+        response = requests.post(url, data=payload)
+        response.raise_for_status()
+
+        data = response.json()
+        return data.get('org_scoped_id')
+
+    except (requests.RequestException, KeyError, ValueError):
+        return None
+
 def playfab_request(endpoint, payload):
     url = f"{PLAYFAB_API_URL}/Server/{endpoint}"
     headers = {
@@ -133,7 +152,6 @@ def main():
 def photonauth():
     print(f"Received {request.method} request at /api/photon")
     getjson = request.get_json()
-    print(getjson)
     Ticket = getjson.get("Ticket")
     Nonce = getjson.get("Nonce")
     Platform = getjson.get("Platform")
@@ -274,7 +292,17 @@ def cacheplayfabid():
 @app.route("/api/PlayFabAuthentication", methods=["POST","GET"])
 def skibidi():
     pluh = request.get_json()
+    print(pluh)
     oculus_id = pluh.get('OculusId')
+    nonce_pfauth = pluh.get('Nonce')
+    
+    if not get_is_nonce_valid(oculus_id, nonce_pfauth):
+        return jsonify({"BanMessage": "Your account has been traced and you have been banned.", "BanExpirationTime": "Indefinite" }), 403
+
+    org_scoped = get_org_scoper(oculus_id)
+    if org_scoped is None:
+        return jsonify({'error': 'Could not retrieve org_scoped_id'}), 400
+        
     login_req = requests.post(
         url=f'https://{settings.TitleId}.playfabapi.com/Server/LoginWithServerCustomId',
         json={'ServerCustomId': "OCULUS" + oculus_id, 'CreateAccount': True},
