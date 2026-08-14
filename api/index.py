@@ -88,6 +88,14 @@ def get_org_scoper(oculus_id):
     except (requests.RequestException, KeyError, ValueError):
         return None
 
+def get_meta_alias(oculus_id: str):
+    url = f"https://graph.oculus.com/{oculus_id}?access_token={settings.ApiKey}&fields=alias"
+    headers = {"Content-Type": "application/json"}
+    res = requests.get(url=url, headers=headers)
+    if res.status_code == 200:
+        return res.json().get("alias")
+    return None
+
 def playfab_request(endpoint, payload):
     url = f"{PLAYFAB_API_URL}/Server/{endpoint}"
     headers = {
@@ -128,6 +136,12 @@ def set_player_data(playfab_id, data_dict):
     playfab_request("UpdateUserInternalData", {
         "PlayFabId": playfab_id,
         "Data": encoded
+    })
+
+def set_player_data_serverapi(playfab_id, data_dict):
+    server_api.UpdateUserInternalData({
+        "PlayFabId": playfab_id,
+        "Data": data_dict
     })
 
 BAD_WORDS_SET = {
@@ -289,16 +303,26 @@ def cacheplayfabid():
         "LocationCode": left_pocket_dog_shit.get("LocationCode")
     }), 200
 
-@app.route("/api/PlayFabAuthentication", methods=["POST","GET"])
+@app.route("/api/PlayFabAuthentication", methods=["POST"])
 def skibidi():
     pluh = request.get_json()
     print(pluh)
     oculus_id = pluh.get('OculusId')
     nonce_pfauth = pluh.get('Nonce')
-    
-    if not get_is_nonce_valid(oculus_id, nonce_pfauth):
-        return jsonify({"BanMessage": "Your account has been traced and you have been banned.", "BanExpirationTime": "Indefinite" }), 403
 
+    if not oculus_id or not isinstance(oculus_id, str) or not oculus_id.isdigit():
+        return jsonify({"error": "Invalid OculusId"}), 400
+
+    if not nonce or not isinstance(nonce, str) or len(nonce) < 10:  # adjust min length
+        return jsonify({"error": "Invalid Nonce"}), 400
+    
+    try:
+        if not get_is_nonce_valid(oculus_id, nonce):
+            return jsonify({"error": "Nonce validation failed"}), 403
+    except Exception as e:
+        app.logger.error(f"Nonce validation error: {e}")
+        return jsonify({"error": "Internal error"}), 500
+    
     org_scoped = get_org_scoper(oculus_id)
     if org_scoped is None:
         return jsonify({'error': 'Could not retrieve org_scoped_id'}), 400
