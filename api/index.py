@@ -326,10 +326,6 @@ def skibidi():
     org_scoped = get_org_scoper(oculus_id)
     if org_scoped is None:
         return jsonify({'error': 'Could not retrieve org_scoped_id'}), 400
-
-    meta_alias = get_meta_alias(oculus_id)
-    if meta_alias is None:
-        return jsonify({'error': 'Could not retrieve meta_alias'}), 400
         
     login_req = requests.post(
         url=f'https://{settings.TitleId}.playfabapi.com/Server/LoginWithServerCustomId',
