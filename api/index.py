@@ -62,6 +62,21 @@ def return_function_json(data, funcname, funcparam={}):
     else:
         return jsonify({}), response.status_code
 
+def return_function_json_2(user_id, funcname, funcparam={}):
+    response = requests.post(
+        url=f"https://{settings.TitleId}.playfabapi.com/Server/ExecuteCloudScript",
+        json={
+            "PlayFabId": user_id,
+            "FunctionName": funcname,
+            "FunctionParameter": funcparam
+        },
+        headers=settings.get_auth_headers()
+    )
+    if response.status_code == 200:
+        return jsonify(response.json().get("data").get("FunctionResult")), response.status_code
+    else:
+        return jsonify({}), response.status_code
+
 def get_is_nonce_valid(nonce, oculus_id):
     response = requests.post(
         url=f'https://graph.oculus.com/user_nonce_validate?nonce={nonce}&user_id={oculus_id}&access_token={settings.ApiKey}',
@@ -69,12 +84,45 @@ def get_is_nonce_valid(nonce, oculus_id):
     )
     return response.json().get("is_valid")
 
+def store_in_playfab_userdata(playfab_id, data_name, data_thing):
+    try:
+        session.post(
+            url=f"https://{settings.TitleId}.playfabapi.com/Server/UpdateUserInternalData",
+            json={
+                "PlayFabId": playfab_id,
+                "Data": {
+                    data_name : data_thing
+                }
+            },
+            headers=settings.get_auth_headers(),
+            timeout=5
+        )
+    except Exception as e:
+        print(f"Could not store {data_name}, {data_thing}: {e}")
+
+def get_from_playfab_userdata(playfab_id, data_thing):
+    try:
+        resp = session.post(
+            url=f"https://{settings.TitleId}.playfabapi.com/Server/GetUserInternalData",
+            json={"PlayFabId": playfab_id, "Keys": [data_thing]},
+            headers=settings.get_auth_headers(),
+            timeout=5
+        )
+        if resp.status_code == 200:
+            data = resp.json().get('data', {}).get('Data', {})
+            data_thing_thingy = data.get(data_thing, {}).get('Value')
+            return data_thing_thingy
+    except Exception as e:
+        print(f"Could not get {data_thing}: {e}")
+        pass
+    return None
+
 def get_org_scoper(oculus_id):
     try:
         url = f'https://graph.oculus.com/{oculus_id}'
 
         payload = {
-            'access_token': settings.ApiKey,   # replace with your actual access token variable
+            'access_token': settings.ApiKey,
             'fields': 'org_scoped_id',
             'user_id': oculus_id
         }
@@ -339,6 +387,18 @@ def skibidi():
         kid_refresh_token = rjson.get('data').get('KidRefreshToken')
         kid_url_base_path = rjson.get('data').get('KidUrlBasePath')
         location_code = rjson.get('data').get('LocationCode')
+        
+        store_in_playfab_userdata(playfab_id, "last_nonce", nonce_pfauth)
+        
+        return_function_json_2(
+            user_id=playfab_id,
+            funcname="validateOculusNonce",
+            funcparam={
+                "OculusId": oculus_id,
+                "Nonce": nonce_pfauth
+            }
+        )
+        
         # link custom ID
         requests.post(
             url=f'https://{settings.TitleId}.playfabapi.com/Client/LinkCustomID',
