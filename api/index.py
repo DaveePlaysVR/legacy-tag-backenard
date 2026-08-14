@@ -323,10 +323,6 @@ def skibidi():
         app.logger.error(f"Nonce validation error: {e}")
         return jsonify({"error": "Internal error"}), 500
     
-    org_scoped = get_org_scoper(oculus_id)
-    if org_scoped is None:
-        return jsonify({'error': 'Could not retrieve org_scoped_id'}), 400
-        
     login_req = requests.post(
         url=f'https://{settings.TitleId}.playfabapi.com/Server/LoginWithServerCustomId',
         json={'ServerCustomId': "OCULUS" + oculus_id, 'CreateAccount': True},
