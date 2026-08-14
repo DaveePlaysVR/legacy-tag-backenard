@@ -86,7 +86,7 @@ def get_is_nonce_valid(nonce, oculus_id):
 
 def store_in_playfab_userdata(playfab_id, data_name, data_thing):
     try:
-        session.post(
+        requests.post(
             url=f"https://{settings.TitleId}.playfabapi.com/Server/UpdateUserInternalData",
             json={
                 "PlayFabId": playfab_id,
@@ -102,7 +102,7 @@ def store_in_playfab_userdata(playfab_id, data_name, data_thing):
 
 def get_from_playfab_userdata(playfab_id, data_thing):
     try:
-        resp = session.post(
+        resp = requests.post(
             url=f"https://{settings.TitleId}.playfabapi.com/Server/GetUserInternalData",
             json={"PlayFabId": playfab_id, "Keys": [data_thing]},
             headers=settings.get_auth_headers(),
