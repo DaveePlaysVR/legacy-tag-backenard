@@ -317,7 +317,7 @@ def skibidi():
         return jsonify({"error": "Invalid Nonce"}), 400
     
     try:
-        if not get_is_nonce_valid(oculus_id, nonce_pfauth):
+        if not get_is_nonce_valid(nonce_pfauth, oculus_id):
             return jsonify({"error": "Nonce validation failed"}), 403
     except Exception as e:
         app.logger.error(f"Nonce validation error: {e}")
