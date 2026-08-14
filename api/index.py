@@ -313,11 +313,11 @@ def skibidi():
     if not oculus_id or not isinstance(oculus_id, str) or not oculus_id.isdigit():
         return jsonify({"error": "Invalid OculusId"}), 400
 
-    if not nonce_pfauth or not isinstance(nonce, str) or len(nonce) < 10:  # adjust min length
+    if not nonce_pfauth or not isinstance(nonce_pfauth, str) or len(nonce_pfauth) < 10:  # adjust min length
         return jsonify({"error": "Invalid Nonce"}), 400
     
     try:
-        if not get_is_nonce_valid(oculus_id, nonce):
+        if not get_is_nonce_valid(oculus_id, nonce_pfauth):
             return jsonify({"error": "Nonce validation failed"}), 403
     except Exception as e:
         app.logger.error(f"Nonce validation error: {e}")
