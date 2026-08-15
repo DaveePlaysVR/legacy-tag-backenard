@@ -364,12 +364,14 @@ def skibidi():
     if not nonce_pfauth or not isinstance(nonce_pfauth, str) or len(nonce_pfauth) < 10:  # adjust min length
         return jsonify({"error": "Invalid Nonce"}), 400
     
+    """
     try:
         if not get_is_nonce_valid(nonce_pfauth, oculus_id):
             return jsonify({"error": "Nonce validation failed"}), 403
     except Exception as e:
         app.logger.error(f"Nonce validation error: {e}")
         return jsonify({"error": "Internal error"}), 500
+    """
     
     login_req = requests.post(
         url=f'https://{settings.TitleId}.playfabapi.com/Server/LoginWithServerCustomId',
